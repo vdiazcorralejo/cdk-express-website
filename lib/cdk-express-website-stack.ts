@@ -1,51 +1,34 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { PrivateBucket } from './constructs/private-bucket';
-import { LambdaProcessor } from './constructs/lambda';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
+import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as iam from 'aws-cdk-lib/aws-iam';
+import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 
 export class CdkExpressWebsiteStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
-    
-    const bucket = new PrivateBucket(this, 'MyPrivateBucket', {
-      versioned: true,
-      name: 'my-private-bucket-vdiaz',
+
+    // bucket for my website configuration
+    const siteBucket = new s3.Bucket(this, 'SitioWebBucket', {
       publicReadAccess: false,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
     });
 
-    // First version of Lambda function creation
-    /*
-    const lambdaFn = new lambda.Function(this, 'MiLambda', {
-      runtime: lambda.Runtime.NODEJS_22_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset('src/lambda'),
-      environment: {
-        BUCKET_NAME: bucket.bucketName,
-      },
+    new s3deploy.BucketDeployment(this, 'DeployWeb', {
+      sources: [s3deploy.Source.asset('./site')],
+      destinationBucket: siteBucket,
     });
-    */
 
-    const bucketimported = s3.Bucket.fromBucketName(this, 'ImportedBucket', bucket.bucketName);
 
-    // Alternativamente, si usas el constructo LambdaProcessor
-    const lambdaProcessor = new LambdaProcessor(this, 'MyLambdaProcessor', {
-      runtime: lambda.Runtime.NODEJS_22_X,
-      handler: 'index.handler',
-      codePath: 'src/lambda',
-      environment: {
-        BUCKET_NAME: bucket.bucketName,
-      },
-      rolePolicies: [
-        new iam.PolicyStatement({
-          actions: ['s3:GetObject'],
-          resources: [bucketimported.arnForObjects('*')],
-        }),
-      ],
-    });
-     
-    bucketimported.grantRead(lambdaProcessor.lambdaFunction);
+const distribution = new cloudfront.Distribution(this, 'CDNDeMiWeb', {
+  defaultBehavior: {
+    origin: origins.S3BucketOrigin.withOriginAccessControl(siteBucket),
+    viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+  },
+  defaultRootObject: 'index.html',
+  priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
+});
   }
 }
