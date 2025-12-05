@@ -66,7 +66,6 @@ describe('CdkExpressWebsiteStack', () => {
     stack = new CdkExpressWebsiteStack(
       app,
       'TestWebStack',
-      certificateStack.certificate,
       {
         crossRegionReferences: true,
       }
@@ -371,7 +370,6 @@ describe('Stack Integration Tests', () => {
     const webStack = new CdkExpressWebsiteStack(
       app,
       'WebStack',
-      certStack.certificate,
       {
         crossRegionReferences: true,
       }
@@ -392,7 +390,6 @@ describe('Stack Integration Tests', () => {
     const webStack = new CdkExpressWebsiteStack(
       app,
       'WebStack',
-      certStack.certificate,
       {
         env: { account: '123456789012', region: 'us-west-2' },
         crossRegionReferences: true,
