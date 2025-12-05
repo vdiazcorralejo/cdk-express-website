@@ -1,205 +1,164 @@
 import * as cdk from 'aws-cdk-lib';
 import { Template, Match } from 'aws-cdk-lib/assertions';
 import { CdkExpressWebsiteStack } from '../lib/cdk-express-website-stack';
-import { BackendStack } from '../lib/backend-stack';
-import { FrontendStack } from '../lib/frontend-stack';
-import { StorageStack } from '../lib/storage-stack';
+import { CertificateStack } from '../lib/certificate-stack';
 import { PrivateBucket } from '../lib/constructs/private-bucket';
 import { LambdaProcessor } from '../lib/constructs/lambda';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 
+describe('CertificateStack', () => {
+  let app: cdk.App;
+  let stack: CertificateStack;npm test
+  let template: Template;
+
+  beforeEach(() => {
+    app = new cdk.App();
+    stack = new CertificateStack(app, 'TestCertificateStack', {
+      env: { region: 'us-east-1' },
+    });
+    template = Template.fromStack(stack);
+  });
+
+  test('creates an ACM certificate', () => {
+    template.resourceCountIs('AWS::CertificateManager::Certificate', 1);
+  });
+
+  test('certificate has correct domain name', () => {
+    template.hasResourceProperties('AWS::CertificateManager::Certificate', {
+      DomainName: 'vdiaz-aws.cloud',
+    });
+  });
+
+  test('certificate has subject alternative names', () => {
+    template.hasResourceProperties('AWS::CertificateManager::Certificate', {
+      SubjectAlternativeNames: ['www.vdiaz-aws.cloud'],
+    });
+  });
+
+  test('certificate uses DNS validation', () => {
+    template.hasResourceProperties('AWS::CertificateManager::Certificate', {
+      DomainValidationOptions: Match.arrayWith([
+        Match.objectLike({
+          DomainName: 'vdiaz-aws.cloud',
+        }),
+      ]),
+    });
+  });
+
+  test('certificate property is accessible', () => {
+    expect(stack.certificate).toBeDefined();
+  });
+});
+
 describe('CdkExpressWebsiteStack', () => {
   let app: cdk.App;
+  let certificateStack: CertificateStack;
   let stack: CdkExpressWebsiteStack;
   let template: Template;
 
   beforeEach(() => {
     app = new cdk.App();
-    stack = new CdkExpressWebsiteStack(app, 'TestStack');
+    certificateStack = new CertificateStack(app, 'TestCertStack', {
+      env: { region: 'us-east-1' },
+      crossRegionReferences: true,
+    });
+    stack = new CdkExpressWebsiteStack(
+      app,
+      'TestWebStack',
+      certificateStack.certificate,
+      {
+        crossRegionReferences: true,
+      }
+    );
     template = Template.fromStack(stack);
   });
 
-  test('creates a private S3 bucket with versioning enabled', () => {
+  test('creates an S3 bucket for website', () => {
+    template.resourceCountIs('AWS::S3::Bucket', 1);
+  });
+
+  test('S3 bucket has destroy removal policy', () => {
+    template.hasResource('AWS::S3::Bucket', {
+      DeletionPolicy: 'Delete',
+      UpdateReplacePolicy: 'Delete',
+    });
+  });
+
+  test('S3 bucket blocks public access', () => {
     template.hasResourceProperties('AWS::S3::Bucket', {
-      BucketName: 'my-private-bucket-vdiaz',
-      VersioningConfiguration: {
-        Status: 'Enabled'
-      },
       PublicAccessBlockConfiguration: {
         BlockPublicAcls: true,
         BlockPublicPolicy: true,
         IgnorePublicAcls: true,
-        RestrictPublicBuckets: true
-      }
+        RestrictPublicBuckets: true,
+      },
     });
   });
 
-  test('creates a Lambda function with correct runtime', () => {
-    template.hasResourceProperties('AWS::Lambda::Function', {
-      Runtime: 'nodejs22.x',
-      Handler: 'index.handler'
+  test('creates a CloudFront distribution', () => {
+    template.resourceCountIs('AWS::CloudFront::Distribution', 1);
+  });
+
+  test('CloudFront distribution has correct domain names', () => {
+    template.hasResourceProperties('AWS::CloudFront::Distribution', {
+      DistributionConfig: Match.objectLike({
+        Aliases: ['vdiaz-aws.cloud', 'www.vdiaz-aws.cloud'],
+      }),
     });
   });
 
-  test('Lambda function has environment variable with bucket name', () => {
-    template.hasResourceProperties('AWS::Lambda::Function', {
-      Environment: {
-        Variables: {
-          BUCKET_NAME: Match.stringLikeRegexp('my-private-bucket-vdiaz')
-        }
-      }
+  test('CloudFront distribution uses HTTPS redirect', () => {
+    template.hasResourceProperties('AWS::CloudFront::Distribution', {
+      DistributionConfig: Match.objectLike({
+        DefaultCacheBehavior: Match.objectLike({
+          ViewerProtocolPolicy: 'redirect-to-https',
+        }),
+      }),
     });
   });
 
-  test('Lambda execution role has S3 read permissions', () => {
-    template.hasResourceProperties('AWS::IAM::Policy', {
-      PolicyDocument: {
-        Statement: Match.arrayWith([
+  test('CloudFront distribution has default root object', () => {
+    template.hasResourceProperties('AWS::CloudFront::Distribution', {
+      DistributionConfig: Match.objectLike({
+        DefaultRootObject: 'index.html',
+      }),
+    });
+  });
+
+  test('CloudFront distribution uses PRICE_CLASS_100', () => {
+    template.hasResourceProperties('AWS::CloudFront::Distribution', {
+      DistributionConfig: Match.objectLike({
+        PriceClass: 'PriceClass_100',
+      }),
+    });
+  });
+
+  test('CloudFront has custom error responses', () => {
+    template.hasResourceProperties('AWS::CloudFront::Distribution', {
+      DistributionConfig: Match.objectLike({
+        CustomErrorResponses: Match.arrayWith([
           Match.objectLike({
-            Action: 's3:GetObject',
-            Effect: 'Allow',
-            Resource: Match.anyValue()
-          })
-        ])
-      }
+            ErrorCode: 404,
+            ResponseCode: 200,
+            ResponsePagePath: '/index.html',
+          }),
+          Match.objectLike({
+            ErrorCode: 403,
+            ResponseCode: 200,
+            ResponsePagePath: '/index.html',
+          }),
+        ]),
+      }),
     });
   });
 
-  test('creates exactly one S3 bucket', () => {
-    template.resourceCountIs('AWS::S3::Bucket', 1);
+  test('creates bucket deployment', () => {
+    template.resourceCountIs('Custom::CDKBucketDeployment', 1);
   });
 
-  test('creates exactly one Lambda function', () => {
-    template.resourceCountIs('AWS::Lambda::Function', 1);
-  });
-});
-
-describe('BackendStack', () => {
-  let app: cdk.App;
-  let stack: BackendStack;
-  let template: Template;
-
-  beforeEach(() => {
-    app = new cdk.App();
-    stack = new BackendStack(app, 'TestBackendStack');
-    template = Template.fromStack(stack);
-  });
-
-  test('creates a backend Lambda function', () => {
-    template.hasResourceProperties('AWS::Lambda::Function', {
-      Runtime: 'nodejs22.x',
-      Handler: 'backend.handler'
-    });
-  });
-
-  test('exports backend Lambda name', () => {
-    template.hasOutput('BackendLambdaName', {
-      Export: {
-        Name: 'BackendLambdaName2'
-      }
-    });
-  });
-
-  test('exports frontend bucket name', () => {
-    template.hasOutput('FrontendBucketName', {
-      Export: {
-        Name: 'FrontendBucketName2'
-      }
-    });
-  });
-
-  test('backendLambda property is defined', () => {
-    expect(stack.backendLambda).toBeDefined();
-    expect(stack.backendLambda).toBeInstanceOf(lambda.Function);
-  });
-
-  test('bucket property is defined from FrontendStack', () => {
-    expect(stack.bucket).toBeDefined();
-  });
-
-  test('frontendLambda property is defined', () => {
-    expect(stack.frontendLambda).toBeDefined();
-  });
-});
-
-describe('FrontendStack', () => {
-  let app: cdk.App;
-  let stack: FrontendStack;
-  let template: Template;
-
-  beforeEach(() => {
-    app = new cdk.App();
-    stack = new FrontendStack(app, 'TestFrontendStack');
-    template = Template.fromStack(stack);
-  });
-
-  test('creates a private bucket for frontend', () => {
-    template.hasResourceProperties('AWS::S3::Bucket', {
-      BucketName: 'frontend-private-bucket-vdiaz',
-      VersioningConfiguration: {
-        Status: 'Enabled'
-      }
-    });
-  });
-
-  test('exports backend Lambda name with correct export name', () => {
-    template.hasOutput('BackendLambdaName', {
-      Export: {
-        Name: 'BackendLambdaName1'
-      }
-    });
-  });
-
-  test('exports frontend bucket name with correct export name', () => {
-    template.hasOutput('FrontendBucketName', {
-      Export: {
-        Name: 'FrontendBucketName1'
-      }
-    });
-  });
-
-  test('bucket property is accessible', () => {
-    expect(stack.bucket).toBeDefined();
-    expect(stack.bucket.bucketName).toContain('frontend-private-bucket-vdiaz');
-  });
-
-  test('backendLambda property is accessible', () => {
-    expect(stack.backendLambda).toBeDefined();
-  });
-});
-
-describe('StorageStack', () => {
-  let app: cdk.App;
-  let stack: StorageStack;
-  let template: Template;
-
-  beforeEach(() => {
-    app = new cdk.App();
-    stack = new StorageStack(app, 'TestStorageStack');
-    template = Template.fromStack(stack);
-  });
-
-  test('creates an S3 bucket', () => {
-    template.resourceCountIs('AWS::S3::Bucket', 1);
-  });
-
-  test('bucket has versioning enabled', () => {
-    template.hasResourceProperties('AWS::S3::Bucket', {
-      VersioningConfiguration: {
-        Status: 'Enabled'
-      }
-    });
-  });
-
-  test('bucket has destroy removal policy', () => {
-    template.hasResource('AWS::S3::Bucket', {
-      DeletionPolicy: 'Delete'
-    });
-  });
-
-  test('bucket property is accessible', () => {
-    expect(stack.bucket).toBeDefined();
+  test('CloudFront uses Origin Access Control', () => {
+    template.resourceCountIs('AWS::CloudFront::OriginAccessControl', 1);
   });
 });
 
@@ -215,22 +174,22 @@ describe('PrivateBucket Construct', () => {
     privateBucket = new PrivateBucket(stack, 'TestPrivateBucket', {
       versioned: true,
       name: 'test-bucket-name',
-      publicReadAccess: false
+      publicReadAccess: false,
     });
     template = Template.fromStack(stack);
   });
 
   test('creates bucket with provided name', () => {
     template.hasResourceProperties('AWS::S3::Bucket', {
-      BucketName: 'test-bucket-name'
+      BucketName: 'test-bucket-name',
     });
   });
 
   test('enables versioning when specified', () => {
     template.hasResourceProperties('AWS::S3::Bucket', {
       VersioningConfiguration: {
-        Status: 'Enabled'
-      }
+        Status: 'Enabled',
+      },
     });
   });
 
@@ -240,14 +199,14 @@ describe('PrivateBucket Construct', () => {
         BlockPublicAcls: true,
         BlockPublicPolicy: true,
         IgnorePublicAcls: true,
-        RestrictPublicBuckets: true
-      }
+        RestrictPublicBuckets: true,
+      },
     });
   });
 
   test('has destroy removal policy', () => {
     template.hasResource('AWS::S3::Bucket', {
-      DeletionPolicy: 'Delete'
+      DeletionPolicy: 'Delete',
     });
   });
 
@@ -258,8 +217,8 @@ describe('PrivateBucket Construct', () => {
   test('disables public read access', () => {
     template.hasResourceProperties('AWS::S3::Bucket', {
       PublicAccessBlockConfiguration: Match.objectLike({
-        BlockPublicAcls: true
-      })
+        BlockPublicAcls: true,
+      }),
     });
   });
 });
@@ -281,8 +240,8 @@ describe('LambdaProcessor Construct', () => {
       handler: 'index.handler',
       codePath: 'src/lambda',
       environment: {
-        TEST_VAR: 'test-value'
-      }
+        TEST_VAR: 'test-value',
+      },
     });
     template = Template.fromStack(stack);
 
@@ -291,9 +250,9 @@ describe('LambdaProcessor Construct', () => {
       Handler: 'index.handler',
       Environment: {
         Variables: {
-          TEST_VAR: 'test-value'
-        }
-      }
+          TEST_VAR: 'test-value',
+        },
+      },
     });
   });
 
@@ -301,7 +260,7 @@ describe('LambdaProcessor Construct', () => {
     lambdaProcessor = new LambdaProcessor(stack, 'TestLambda', {
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
-      codePath: 'src/lambda'
+      codePath: 'src/lambda',
     });
     template = Template.fromStack(stack);
 
@@ -312,25 +271,25 @@ describe('LambdaProcessor Construct', () => {
             Action: 'sts:AssumeRole',
             Effect: 'Allow',
             Principal: {
-              Service: 'lambda.amazonaws.com'
-            }
-          }
-        ]
-      }
+              Service: 'lambda.amazonaws.com',
+            },
+          },
+        ],
+      },
     });
   });
 
   test('attaches custom policies when provided', () => {
     const customPolicy = new iam.PolicyStatement({
       actions: ['s3:GetObject'],
-      resources: ['arn:aws:s3:::test-bucket/*']
+      resources: ['arn:aws:s3:::test-bucket/*'],
     });
 
     lambdaProcessor = new LambdaProcessor(stack, 'TestLambda', {
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
       codePath: 'src/lambda',
-      rolePolicies: [customPolicy]
+      rolePolicies: [customPolicy],
     });
     template = Template.fromStack(stack);
 
@@ -340,10 +299,10 @@ describe('LambdaProcessor Construct', () => {
           {
             Action: 's3:GetObject',
             Effect: 'Allow',
-            Resource: 'arn:aws:s3:::test-bucket/*'
-          }
-        ])
-      }
+            Resource: 'arn:aws:s3:::test-bucket/*',
+          },
+        ]),
+      },
     });
   });
 
@@ -351,7 +310,7 @@ describe('LambdaProcessor Construct', () => {
     lambdaProcessor = new LambdaProcessor(stack, 'TestLambda', {
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
-      codePath: 'src/lambda'
+      codePath: 'src/lambda',
     });
 
     expect(lambdaProcessor.lambdaFunction).toBeDefined();
@@ -362,7 +321,7 @@ describe('LambdaProcessor Construct', () => {
     lambdaProcessor = new LambdaProcessor(stack, 'TestLambda', {
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
-      codePath: 'src/lambda'
+      codePath: 'src/lambda',
     });
     template = Template.fromStack(stack);
 
@@ -372,18 +331,18 @@ describe('LambdaProcessor Construct', () => {
   test('handles multiple role policies', () => {
     const policy1 = new iam.PolicyStatement({
       actions: ['s3:GetObject'],
-      resources: ['*']
+      resources: ['*'],
     });
     const policy2 = new iam.PolicyStatement({
       actions: ['dynamodb:Query'],
-      resources: ['*']
+      resources: ['*'],
     });
 
     lambdaProcessor = new LambdaProcessor(stack, 'TestLambda', {
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
       codePath: 'src/lambda',
-      rolePolicies: [policy1, policy2]
+      rolePolicies: [policy1, policy2],
     });
     template = Template.fromStack(stack);
 
@@ -391,37 +350,56 @@ describe('LambdaProcessor Construct', () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectLike({
-            Action: 's3:GetObject'
+            Action: 's3:GetObject',
           }),
           Match.objectLike({
-            Action: 'dynamodb:Query'
-          })
-        ])
-      }
+            Action: 'dynamodb:Query',
+          }),
+        ]),
+      },
     });
   });
 });
 
 describe('Stack Integration Tests', () => {
-  test('BackendStack and FrontendStack integrate correctly', () => {
+  test('CertificateStack and CdkExpressWebsiteStack integrate correctly', () => {
     const app = new cdk.App();
-    const backendStack = new BackendStack(app, 'TestBackendStack');
+    const certStack = new CertificateStack(app, 'CertStack', {
+      env: { region: 'us-east-1' },
+      crossRegionReferences: true,
+    });
+    const webStack = new CdkExpressWebsiteStack(
+      app,
+      'WebStack',
+      certStack.certificate,
+      {
+        crossRegionReferences: true,
+      }
+    );
 
-    expect(backendStack.frontendStack).toBeDefined();
-    expect(backendStack.bucket).toBeDefined();
-    expect(backendStack.backendLambda).toBeDefined();
-    expect(backendStack.frontendLambda).toBeDefined();
+    expect(certStack.certificate).toBeDefined();
+    expect(webStack).toBeDefined();
   });
 
-  test('all stacks can be instantiated together', () => {
+  test('both stacks can be instantiated with cross-region references', () => {
     const app = new cdk.App();
-    
-    const cdkStack = new CdkExpressWebsiteStack(app, 'CdkStack');
-    const backendStack = new BackendStack(app, 'BackendStack');
-    const storageStack = new StorageStack(app, 'StorageStack');
 
-    expect(cdkStack).toBeDefined();
-    expect(backendStack).toBeDefined();
-    expect(storageStack).toBeDefined();
+    const certStack = new CertificateStack(app, 'CertStack', {
+      env: { account: '123456789012', region: 'us-east-1' },
+      crossRegionReferences: true,
+    });
+
+    const webStack = new CdkExpressWebsiteStack(
+      app,
+      'WebStack',
+      certStack.certificate,
+      {
+        env: { account: '123456789012', region: 'us-west-2' },
+        crossRegionReferences: true,
+      }
+    );
+
+    expect(certStack).toBeDefined();
+    expect(webStack).toBeDefined();
   });
 });

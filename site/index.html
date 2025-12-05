@@ -3,10 +3,355 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AWS CDK Express Website</title>
+    <title>Vicente Díaz - AWS CDK Portfolio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 60px 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .aws-badge {
+            display: inline-block;
+            background: #FF9900;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+
+        h1 {
+            font-size: 48px;
+            color: #232F3E;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            color: #545b64;
+            margin-bottom: 30px;
+        }
+
+        .hero-description {
+            font-size: 16px;
+            color: #666;
+            max-width: 700px;
+            margin: 0 auto 30px;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #232F3E;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #FF9900;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #232F3E;
+            border: 2px solid #232F3E;
+        }
+
+        .btn-secondary:hover {
+            background: #232F3E;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .projects-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .project-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .project-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .project-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+        }
+
+        .project-card h3 {
+            color: #232F3E;
+            margin-bottom: 15px;
+            font-size: 24px;
+        }
+
+        .project-card p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .tech-tag {
+            background: #f0f0f0;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .tech-tag.aws {
+            background: #FF9900;
+            color: white;
+        }
+
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #232F3E;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .social-links {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .social-links a {
+            color: #232F3E;
+            font-size: 24px;
+            transition: color 0.3s ease;
+            text-decoration: none;
+        }
+
+        .social-links a:hover {
+            color: #FF9900;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 32px;
+            }
+
+            .subtitle {
+                font-size: 18px;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>AWS CDK Express Website</h1>
-    <p>Este es un sitio web creado con AWS CDK</p>
+    <div class="container">
+        <header>
+            <div class="aws-badge">☁️ AWS CDK SPECIALIST</div>
+            <h1>Vicente Díaz-Corralejo</h1>
+            <p class="subtitle">Cloud Infrastructure Engineer & AWS CDK Developer</p>
+            <p class="hero-description">
+                Transforming cloud infrastructure into code with AWS CDK. Building scalable, 
+                maintainable, and secure cloud solutions using Infrastructure as Code best practices.
+            </p>
+            <div class="cta-buttons">
+                <a href="https://github.com/vdiazcorralejo" class="btn btn-primary">View GitHub</a>
+                <a href="mailto:vdiazcorralejo@gmail.com" class="btn btn-secondary">Contact Me</a>
+            </div>
+        </header>
+
+        <div class="stats-section">
+            <div class="stat-card">
+                <div class="stat-number">50+</div>
+                <div class="stat-label">CDK Stacks Deployed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">15+</div>
+                <div class="stat-label">AWS Services</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">100%</div>
+                <div class="stat-label">IaC Coverage</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">5+</div>
+                <div class="stat-label">Years Experience</div>
+            </div>
+        </div>
+
+        <div class="projects-section">
+            <div class="project-card">
+                <div class="project-icon">🚀</div>
+                <h3>Serverless Web Applications</h3>
+                <p>Full-stack serverless applications using Lambda, API Gateway, and CloudFront with custom domain and SSL certificates.</p>
+                <div class="tech-stack">
+                    <span class="tech-tag aws">Lambda</span>
+                    <span class="tech-tag aws">CloudFront</span>
+                    <span class="tech-tag aws">S3</span>
+                    <span class="tech-tag">TypeScript</span>
+                </div>
+            </div>
+
+            <div class="project-card">
+                <div class="project-icon">🔐</div>
+                <h3>Secure Storage Solutions</h3>
+                <p>Private S3 buckets with versioning, encryption, and IAM policies. Custom constructs for reusable infrastructure patterns.</p>
+                <div class="tech-stack">
+                    <span class="tech-tag aws">S3</span>
+                    <span class="tech-tag aws">IAM</span>
+                    <span class="tech-tag aws">KMS</span>
+                    <span class="tech-tag">CDK</span>
+                </div>
+            </div>
+
+            <div class="project-card">
+                <div class="project-icon">⚡</div>
+                <h3>Event-Driven Architectures</h3>
+                <p>Scalable microservices using Lambda functions with custom IAM roles and environment configurations.</p>
+                <div class="tech-stack">
+                    <span class="tech-tag aws">Lambda</span>
+                    <span class="tech-tag aws">EventBridge</span>
+                    <span class="tech-tag aws">SQS</span>
+                    <span class="tech-tag">Node.js</span>
+                </div>
+            </div>
+
+            <div class="project-card">
+                <div class="project-icon">🌐</div>
+                <h3>Multi-Stack Infrastructure</h3>
+                <p>Complex multi-stack deployments with cross-stack references, managing Backend, Frontend, and Storage layers.</p>
+                <div class="tech-stack">
+                    <span class="tech-tag aws">CloudFormation</span>
+                    <span class="tech-tag aws">CDK</span>
+                    <span class="tech-tag">TypeScript</span>
+                    <span class="tech-tag">Jest</span>
+                </div>
+            </div>
+
+            <div class="project-card">
+                <div class="project-icon">🛡️</div>
+                <h3>SSL/TLS Certificate Management</h3>
+                <p>Automated certificate provisioning and management using AWS Certificate Manager with DNS validation.</p>
+                <div class="tech-stack">
+                    <span class="tech-tag aws">ACM</span>
+                    <span class="tech-tag aws">Route53</span>
+                    <span class="tech-tag aws">CloudFront</span>
+                </div>
+            </div>
+
+            <div class="project-card">
+                <div class="project-icon">🧪</div>
+                <h3>Infrastructure Testing</h3>
+                <p>Comprehensive test suites for CDK stacks using Jest and CDK assertions for reliable deployments.</p>
+                <div class="tech-stack">
+                    <span class="tech-tag">Jest</span>
+                    <span class="tech-tag">TypeScript</span>
+                    <span class="tech-tag">CDK Assertions</span>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <h3 style="color: #232F3E; margin-bottom: 15px;">Let's Build Something Amazing Together</h3>
+            <p style="color: #666; margin-bottom: 20px;">
+                Interested in AWS CDK development? Let's connect and discuss how we can transform your infrastructure.
+            </p>
+            <div class="social-links">
+                <a href="https://github.com/vdiazcorralejo" title="GitHub">🔗</a>
+                <a href="https://linkedin.com/in/vdiazcorralejo" title="LinkedIn">💼</a>
+                <a href="mailto:vdiazcorralejo@gmail.com" title="Email">📧</a>
+            </div>
+            <p style="margin-top: 30px; color: #999; font-size: 14px;">
+                © 2025 Vicente Díaz-Corralejo | Powered by AWS CDK & CloudFront
+            </p>
+        </footer>
+    </div>
 </body>
-</html>
+</html> 

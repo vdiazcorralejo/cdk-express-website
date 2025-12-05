@@ -21,7 +21,7 @@ export class CdkExpressWebsiteStack extends cdk.Stack {
       sources: [s3deploy.Source.asset('./site')],
       destinationBucket: siteBucket,
     });
-
+  
     const distribution = new cloudfront.Distribution(this, 'CDNOfMyWeb', {
       defaultBehavior: {
       origin: origins.S3BucketOrigin.withOriginAccessControl(siteBucket),
@@ -31,6 +31,18 @@ export class CdkExpressWebsiteStack extends cdk.Stack {
       priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
       domainNames: ['vdiaz-aws.cloud', 'www.vdiaz-aws.cloud'],
       certificate: certificate,
+      errorResponses: [
+        {
+          httpStatus: 404,
+          responseHttpStatus: 200,
+          responsePagePath: '/error404.html',
+        },
+        {
+          httpStatus: 403,
+          responseHttpStatus: 200,
+          responsePagePath: '/error403.html',
+        }
+      ],
     });
   }
 }
