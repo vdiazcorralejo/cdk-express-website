@@ -24,11 +24,6 @@ export class CdkExpressWebsiteStack extends cdk.Stack {
       autoDeleteObjects: true,
     });
 
-    new s3deploy.BucketDeployment(this, 'DeployWeb', {
-      sources: [s3deploy.Source.asset('./site')],
-      destinationBucket: siteBucket,
-    });
-  
     const distribution = new cloudfront.Distribution(this, 'CDNOfMyWeb', {
       defaultBehavior: {
       origin: origins.S3BucketOrigin.withOriginAccessControl(siteBucket),
@@ -51,5 +46,13 @@ export class CdkExpressWebsiteStack extends cdk.Stack {
         }
       ],
     });
+
+    // Deploy site contents to S3 bucket and invalidate CloudFront cache
+    new s3deploy.BucketDeployment(this, 'DeployWeb', {
+      sources: [s3deploy.Source.asset('./site')],
+      destinationBucket: siteBucket,
+      distribution: distribution,
+    });
+  
   }
 }
