@@ -7,8 +7,15 @@ import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 
 export class CdkExpressWebsiteStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, certificate: acm.ICertificate, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+
+    //Import certificate created in CertificateStack
+    const certificate = acm.Certificate.fromCertificateArn(
+      this,
+      'Certificate',
+      'arn:aws:acm:us-east-1:869176216661:certificate/40612c56-39cd-4ccc-8d51-1dba1b4d7fc7'
+    );
 
     // bucket for my website configuration
     const siteBucket = new s3.Bucket(this, 'WebSiteBucket', {

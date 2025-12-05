@@ -14,5 +14,10 @@ export class CertificateStack extends cdk.Stack {
       subjectAlternativeNames: ['www.vdiaz-aws.cloud'],
       validation: acm.CertificateValidation.fromDns(),
     });
+
+    new cdk.CfnOutput(this, 'CertificateArn', {
+      value: this.certificate.certificateArn,
+      exportName: 'CertificateArn',
+    });
   }
 }

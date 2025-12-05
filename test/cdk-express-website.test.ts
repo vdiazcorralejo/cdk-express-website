@@ -9,7 +9,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 
 describe('CertificateStack', () => {
   let app: cdk.App;
-  let stack: CertificateStack;npm test
+  let stack: CertificateStack;
   let template: Template;
 
   beforeEach(() => {

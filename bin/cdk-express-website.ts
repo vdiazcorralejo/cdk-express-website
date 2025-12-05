@@ -2,6 +2,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { CdkExpressWebsiteStack } from '../lib/cdk-express-website-stack';
 import { CertificateStack } from '../lib/certificate-stack';
+import { PipelineStack } from '../lib/pipeline-stack';
 
 const app = new cdk.App();
 const certificateStack = new CertificateStack(app, 'CertificateStack', {
@@ -12,10 +13,9 @@ const certificateStack = new CertificateStack(app, 'CertificateStack', {
   crossRegionReferences: true,
 });
 
-new CdkExpressWebsiteStack(app, 'CdkExpressWebsiteStack', certificateStack.certificate, {
+new PipelineStack(app, 'PipelineStack', { 
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION,
-  },
-  crossRegionReferences: true,
+  },  
 });
